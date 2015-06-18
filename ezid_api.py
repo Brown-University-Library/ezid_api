@@ -2,8 +2,9 @@ import urllib2
 from datetime import datetime
 import re
 from os.path import join
+import requests
 
-version = '0.2'
+version = '0.3'
 apiVersion = 'EZID API, Version 2'
 
 secureServer = "https://ezid.cdlib.org"
@@ -32,6 +33,10 @@ class ApiSession ():
         authHandler = urllib2.HTTPBasicAuthHandler()
         authHandler.add_password("EZID", secureServer, username, password)
         self.opener = urllib2.build_opener(authHandler)
+        session = requests.Session()
+        session.auth = (username, password)
+        session.headers.update({"Content-Type": "text/plain; charset=UTF-8"})
+        self.session = session
         # TODO: check login before returning?
         # TODO: what happens if no connection?
         self.setScheme(scheme[0:3])
@@ -41,16 +46,25 @@ class ApiSession ():
         self.setNAA(naa)
  
     # Core api calls
+    @property
+    def mint_url(self):
+        shoulder = self.scheme + self.naa
+        return join(secureServer, 'shoulder', shoulder)
+
     def mint(self, metadata={}):
         ''' Generates and registers a random identifier using the id scheme and name assigning authority already set.
         Optionally, metadata can be passed to the 'metadata' prameter as a dictionary object of names & values.
         Minted identifiers are always created with a status of "reserved".
         '''
-        shoulder = self.scheme + self.naa
         metadata['_status'] = private
-        method = lambda: 'POST'
-        requestUri = join(secureServer, 'shoulder', shoulder)
-        return self.__callApi(requestUri, method, self.__makeAnvl(metadata))
+        anvlData = self.__makeAnvl(metadata)
+        r = self.session.post(self.mint_url, data=anvlData)
+        return self.__parseOrReturnError(r)
+
+    def __parseOrReturnError(self, r):
+        if r.ok:
+            return self.__parseRecord(r.text)
+        return r.text
 
 
     def create(self, identifier, metadata={}):
