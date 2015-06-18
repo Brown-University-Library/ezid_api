@@ -13,12 +13,13 @@ class EzidApiTests(unittest.TestCase):
         # store any ids we make so we can be sure to delete them later
         self.ids = [self.ark, self.doi]
 
-    def test_mint(self):
+    def test_ark_mint(self):
         ark = self.arkSession.mint()
-        self.ids.append(ark)
         self.assertTrue(ark.startswith(ezid_api.schemes['ark']))
+
+
+    def test_doi_mint(self):
         doi = self.doiSession.mint()
-        self.ids.append(doi)
         self.assertTrue(doi.startswith(ezid_api.schemes['doi']))
 
     def test_create(self):
