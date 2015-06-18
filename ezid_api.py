@@ -6,7 +6,7 @@ from os.path import join
 version = '0.2'
 apiVersion = 'EZID API, Version 2'
 
-secureServer = "https://n2t.net/ezid"
+secureServer = "https://ezid.cdlib.org"
 testUsername = 'apitest'
 testPassword = 'apitest'
 schemes = {'ark': 'ark:/', 'doi': "doi:"}
