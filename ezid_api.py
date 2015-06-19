@@ -5,16 +5,15 @@ import requests
 version = '0.3'
 apiVersion = 'EZID API, Version 2'
 
-secureServer = "https://ezid.cdlib.org"
 EZID_SERVER = "https://ezid.cdlib.org"
-testUsername = 'apitest'
-testPassword = 'apitest'
-schemes = {'ark': 'ark:/', 'doi': "doi:"}
-private = "reserved"
-public = "public"
-unavail = "unavailable"
-testShoulder = {schemes['ark'] : '99999/fk4', schemes['doi'] : '10.5072/FK2'}
-testMetadata = {'_target': 'http://example.org/opensociety', 'erc.who': 'Karl Popper', 'erc.what': 'The Open Society and Its Enemies', 'erc.when' : '1945'}
+TEST_USERNAME = 'apitest'
+TEST_PASSWORD = 'apitest'
+SCHEMES = {'ark': 'ark:/', 'doi': "doi:"}
+STATUS_RESERVED = "reserved"
+STATUS_PUBLIC = "public"
+STATUS_UNAVAILABLE = "unavailable"
+TEST_SHOULDER = {SCHEMES['ark'] : '99999/fk4', SCHEMES['doi'] : '10.5072/FK2'}
+TEST_METADATA = {'_target': 'http://example.org/opensociety', 'erc.who': 'Karl Popper', 'erc.what': 'The Open Society and Its Enemies', 'erc.when' : '1945'}
 
 
 class ApiSession ():
@@ -23,9 +22,9 @@ class ApiSession ():
     Also accepts a scheme (either "ark" or "doi"), and a assigning authority number.
     Defaults to test account on with scheme and prefix: ark:/99999/fk4
     '''
-    def __init__(self, username=testUsername, password=testPassword, scheme="ark", naa=''):
-        if username == testUsername:
-            password = testPassword
+    def __init__(self, username=TEST_USERNAME, password=TEST_PASSWORD, scheme="ark", naa=''):
+        if username == TEST_USERNAME:
+            password = TEST_PASSWORD
             self.test = True
         else:
             self.test = False
@@ -39,7 +38,7 @@ class ApiSession ():
         self.setScheme(scheme[0:3])
         # if we are testing, use the test shoulder for the given scheme
         if self.test == True:
-            naa = testShoulder[self.scheme]
+            naa = TEST_SHOULDER[self.scheme]
         self.setNAA(naa)
 
     def __parseOrReturnError(self, r):
@@ -53,7 +52,7 @@ class ApiSession ():
         return '/'.join([self.server, 'shoulder', shoulder])
 
     def id_url(self, identifier):
-        if not identifier.startswith(schemes['doi']) and not identifier.startswith(schemes['ark']):
+        if not identifier.startswith(SCHEMES['doi']) and not identifier.startswith(SCHEMES['ark']):
             identifier = self.scheme + self.naa + identifier
         return '/'.join([self.server, 'id', identifier])
 
@@ -64,7 +63,7 @@ class ApiSession ():
         Optionally, metadata can be passed to the 'metadata' prameter as a dictionary object of names & values.
         Minted identifiers are always created with a status of "reserved".
         '''
-        metadata['_status'] = private
+        metadata['_status'] = STATUS_RESERVED
         anvlData = self.__makeAnvl(metadata)
         r = self.session.post(self.mint_url, data=anvlData)
         return self.__parseOrReturnError(r)
@@ -74,7 +73,7 @@ class ApiSession ():
         Optionally, metadata can be passed to the 'metadata' prameter as a dictionary object of names & values.
         '''
         if not "_status" in metadata:
-            metadata["_status"] = private
+            metadata["_status"] = STATUS_RESERVED
         anvlData = self.__makeAnvl(metadata)
         r = self.session.put(self.id_url(identifier), data=anvlData)
         return self.__parseOrReturnError(r)
@@ -132,10 +131,10 @@ class ApiSession ():
         return self.get(identifier)['metadata']['_status']
 
     def makePublic(self, identifier):
-        return self.modify(identifier, '_status', public)
+        return self.modify(identifier, '_status', STATUS_PUBLIC)
 
     def makeUnavailable(self, identifier):
-        return self.modify(identifier, '_status', unavail)
+        return self.modify(identifier, '_status', STATUS_UNAVAILABLE)
 
     def getTarget(self, identifier):
         return self.get(identifier)['metadata']['_target']
@@ -181,7 +180,7 @@ class ApiSession ():
         return self.get(identifier)
 
     def setScheme(self, scheme):
-        self.scheme = schemes[scheme]
+        self.scheme = SCHEMES[scheme]
 
     def setNAA(self, naa):
         self.naa = naa
@@ -192,7 +191,7 @@ class ApiSession ():
             Returns an escaped ANVL string for submission to EZID.
         """
         if metadata == None and self.test == True:
-            metadata = testMetadata
+            metadata = TEST_METADATA
         #----THIS BLOCK TAKEN WHOLESALE FROM EZID API DOCUMENTATION----#
         # http://n2t.net/ezid/doc/apidoc.html#request-response-bodies
         def escape (s):

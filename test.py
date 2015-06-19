@@ -22,19 +22,19 @@ class EzidApiTests(unittest.TestCase):
     def test_ark_mint(self):
         """Mint a new ark id and make sure the resulting string starts wtih the 'ark' scheme"""
         ark = self.arkSession.mint()
-        self.assertTrue(ark.startswith(ezid_api.schemes['ark']))
+        self.assertTrue(ark.startswith(ezid_api.SCHEMES['ark']))
 
     def test_doi_mint(self):
         """Mint a new doi id and make sure the resulting string starts wtih the 'doi' scheme"""
         doi = self.doiSession.mint()
-        self.assertTrue(doi.startswith(ezid_api.schemes['doi']))
+        self.assertTrue(doi.startswith(ezid_api.SCHEMES['doi']))
 
     def test_ark_create(self):
         """Create a new EzidRecord who's primary identifier follows the 'ark' scheme"""
         t_id = self.__create_test_id()
         ark = self.arkSession.create(t_id)
         self.ids.append(ark)
-        self.assertEqual(ark, ezid_api.schemes['ark'] + ezid_api.testShoulder[ezid_api.schemes['ark']] + t_id)
+        self.assertEqual(ark, ezid_api.SCHEMES['ark'] + ezid_api.TEST_SHOULDER[ezid_api.SCHEMES['ark']] + t_id)
 
     def test_doi_create(self):
         """Create a new EzidRecord who's primary identifier follows the 'doi' scheme"""
@@ -43,7 +43,7 @@ class EzidApiTests(unittest.TestCase):
         self.ids.append(doi)
         self.assertTrue(
             doi.startswith(
-                ezid_api.schemes['doi'] + ezid_api.testShoulder[ezid_api.schemes['doi']] + t_id.upper()
+                ezid_api.SCHEMES['doi'] + ezid_api.TEST_SHOULDER[ezid_api.SCHEMES['doi']] + t_id.upper()
             )
         )
 
@@ -66,18 +66,18 @@ class EzidApiTests(unittest.TestCase):
         self.assertEqual(arkGet['metadata']['dc.creator'], creator)
 
     def test_scheme_setter(self):
-        self.assertEqual(self.arkSession.scheme, ezid_api.schemes['ark'])
+        self.assertEqual(self.arkSession.scheme, ezid_api.SCHEMES['ark'])
         self.arkSession.setScheme('doi')
-        self.assertEqual(self.arkSession.scheme, ezid_api.schemes['doi'])
+        self.assertEqual(self.arkSession.scheme, ezid_api.SCHEMES['doi'])
         self.arkSession.setScheme('ark')
-        self.assertEqual(self.arkSession.scheme, ezid_api.schemes['ark'])
+        self.assertEqual(self.arkSession.scheme, ezid_api.SCHEMES['ark'])
 
     def test_naa_setter(self):
-        self.assertEqual(self.arkSession.naa, ezid_api.testShoulder[ezid_api.schemes['ark']])
-        self.arkSession.setNAA(ezid_api.testShoulder[ezid_api.schemes['doi']])
-        self.assertEqual(self.arkSession.naa, ezid_api.testShoulder[ezid_api.schemes['doi']])
-        self.arkSession.setNAA(ezid_api.testShoulder[ezid_api.schemes['ark']])
-        self.assertEqual(self.arkSession.naa, ezid_api.testShoulder[ezid_api.schemes['ark']])
+        self.assertEqual(self.arkSession.naa, ezid_api.TEST_SHOULDER[ezid_api.SCHEMES['ark']])
+        self.arkSession.setNAA(ezid_api.TEST_SHOULDER[ezid_api.SCHEMES['doi']])
+        self.assertEqual(self.arkSession.naa, ezid_api.TEST_SHOULDER[ezid_api.SCHEMES['doi']])
+        self.arkSession.setNAA(ezid_api.TEST_SHOULDER[ezid_api.SCHEMES['ark']])
+        self.assertEqual(self.arkSession.naa, ezid_api.TEST_SHOULDER[ezid_api.SCHEMES['ark']])
 
     def tearDown(self):
         for i in self.ids:
