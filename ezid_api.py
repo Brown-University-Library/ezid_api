@@ -1,13 +1,12 @@
-import urllib2
 from datetime import datetime
 import re
-from os.path import join
 import requests
 
 version = '0.3'
 apiVersion = 'EZID API, Version 2'
 
 secureServer = "https://ezid.cdlib.org"
+EZID_SERVER = "https://ezid.cdlib.org"
 testUsername = 'apitest'
 testPassword = 'apitest'
 schemes = {'ark': 'ark:/', 'doi': "doi:"}
@@ -30,12 +29,10 @@ class ApiSession ():
             self.test = True
         else:
             self.test = False
-        authHandler = urllib2.HTTPBasicAuthHandler()
-        authHandler.add_password("EZID", secureServer, username, password)
-        self.opener = urllib2.build_opener(authHandler)
         session = requests.Session()
         session.auth = (username, password)
         session.headers.update({"Content-Type": "text/plain; charset=UTF-8"})
+        self.server = EZID_SERVER
         self.session = session
         # TODO: check login before returning?
         # TODO: what happens if no connection?
@@ -44,12 +41,23 @@ class ApiSession ():
         if self.test == True:
             naa = testShoulder[self.scheme]
         self.setNAA(naa)
- 
-    # Core api calls
+
+    def __parseOrReturnError(self, r):
+        if r.ok:
+            return self.__parseRecord(r.text)
+        return r.text
+
     @property
     def mint_url(self):
         shoulder = self.scheme + self.naa
-        return join(secureServer, 'shoulder', shoulder)
+        return '/'.join([self.server, 'shoulder', shoulder])
+
+    def id_url(self, identifier):
+        if not identifier.startswith(schemes['doi']) and not identifier.startswith(schemes['ark']):
+            identifier = self.scheme + self.naa + identifier
+        return '/'.join([self.server, 'id', identifier])
+
+    # Core api calls
 
     def mint(self, metadata={}):
         ''' Generates and registers a random identifier using the id scheme and name assigning authority already set.
@@ -61,34 +69,32 @@ class ApiSession ():
         r = self.session.post(self.mint_url, data=anvlData)
         return self.__parseOrReturnError(r)
 
-    def __parseOrReturnError(self, r):
-        if r.ok:
-            return self.__parseRecord(r.text)
-        return r.text
-
-
     def create(self, identifier, metadata={}):
         '''
         Optionally, metadata can be passed to the 'metadata' prameter as a dictionary object of names & values.
         '''
         if not "_status" in metadata:
             metadata["_status"] = private
-        method = lambda: 'PUT'
-        if not identifier.startswith(schemes['doi']) and not identifier.startswith(schemes['ark']):
-            identifier = self.scheme + self.naa + identifier
-        requestUri = join(secureServer, 'id', identifier)
+        anvlData = self.__makeAnvl(metadata)
+        r = self.session.put(self.id_url(identifier), data=anvlData)
+        return self.__parseOrReturnError(r)
 
-        return self.__callApi(requestUri, method, self.__makeAnvl(metadata))
-
-    
     def modify(self, identifier, name, value):
-        ''' Accepts an identifier string, a name string and a value string. Writes the name and value as metadata to the provided identifer. 
+        ''' Accepts an identifier string, a name string and a value string.
+        Writes the name and value as metadata to the provided identifer. 
 
-        The EZID system will store any name/value pair as metadata, but certian names have specific meaning to the system. Some names fit in the metadata profiles explicitly supported by the system, others are reserved as internal data fields.
+        The EZID system will store any name/value pair as metadata, but certian
+        names have specific meaning to the system. Some names fit in the
+        metadata profiles explicitly supported by the system, others are
+        reserved as internal data fields.
 
-        Reserved data fields control how EZID manages an identifer. These fields begin with an '_'. More here: http://n2t.net/ezid/doc/apidoc.html#internal-metadata
+        Reserved data fields control how EZID manages an identifer. These
+        fields begin with an '_'. More here:
+            http://n2t.net/ezid/doc/apidoc.html#internal-metadata
 
-        To write to the standard EZID metadata fields use name strings of the form [profile].[field] where [profile] is one of 'erc', 'dc', or 'datacite'.
+        To write to the standard EZID metadata fields use name strings of the
+        form [profile].[field] where [profile] is one of 'erc', 'dc', or
+        'datacite'.
         Example name strings:
           'erc.who'
           'erc.what'
@@ -99,20 +105,18 @@ class ApiSession ():
           'datacite.title'
           'datacite.publicationyear'
         '''
-        method = lambda: 'POST'
-        requestUri = join(secureServer, 'id', identifier)
-        return self.__callApi(requestUri, method, self.__makeAnvl({name : value}))
+        anvlData = self.__makeAnvl({name: value})
+        r = self.session.post(self.id_url(identifier), data=anvlData)
+        return self.__parseOrReturnError(r)
 
-    
     def get(self, identifier):
-        method = lambda: 'GET'
-        requestUri = join(secureServer, 'id', identifier)
-        return self.__callApi(requestUri, method, None)
+        r = self.session.get(self.id_url(identifier))
+        return self.__parseOrReturnError(r)
 
     def delete(self, identifier):
         method = lambda: 'DELETE'
-        requestUri = join(secureServer, 'id', identifier)
-        return self.__callApi(requestUri, method, None)
+        r = self.session.delete(self.id_url(identifier))
+        return self.__parseOrReturnError(r)
 
 
     # Public utility functions
@@ -121,12 +125,12 @@ class ApiSession ():
             is one of 'erc', 'datacite', or 'dc'.
             Sets default viewing profile for the identifier as indicated.
         '''
-        # profiles = ['erc', 'datacite', 'dc']        
+        # profiles = ['erc', 'datacite', 'dc']
         self.modify(identifier, '_profile', profile)
 
     def getStatus(self, identifier):
         return self.get(identifier)['metadata']['_status']
-        
+
     def makePublic(self, identifier):
         return self.modify(identifier, '_status', public)
 
@@ -135,7 +139,7 @@ class ApiSession ():
 
     def getTarget(self, identifier):
         return self.get(identifier)['metadata']['_target']
-    
+
     def changeTarget(self, identifier, target):
         ''' Deprecated: currently an alias for modifyTarget()
         '''
@@ -165,7 +169,7 @@ class ApiSession ():
             Internal EZID metadata is ignored by the clear process so, eg. '_target' or 
             '_coowner' must be overridden manually.
             Returns the record, same as get().
-            
+
             Note: Because the EZID API offers no interface for full record updates, this 
             method makes an api call--through modify()--for each name-value pair updated.
         '''
@@ -178,7 +182,7 @@ class ApiSession ():
 
     def setScheme(self, scheme):
         self.scheme = schemes[scheme]
-            
+
     def setNAA(self, naa):
         self.naa = naa
 
@@ -198,8 +202,7 @@ class ApiSession ():
         #----END BLOCK----#
 
         return anvl
-    
-    
+
     def __parseRecord(self, ezidResponse):
         record = {}
         parts = ezidResponse.split('\n')
@@ -216,24 +219,6 @@ class ApiSession ():
             record = identifier
         return record
 
-    
-    def __buildId(self, identifier):
-        pass
-
-
-    def __callApi(self, requestUri, requestMethod, requestData):
-        request = urllib2.Request(requestUri)
-        request.get_method = requestMethod
-        request.add_header("Content-Type", "text/plain; charset=UTF-8")
-        request.add_data(requestData)
-        try:
-            response = self.__parseRecord(self.opener.open(request).read())
-        except urllib2.HTTPError as e:
-            response = e.read()
-
-        return response
 
 class InvalidIdentifier(Exception):
     pass
-    
-    
