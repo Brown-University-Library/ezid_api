@@ -8,12 +8,21 @@ apiVersion = 'EZID API, Version 2'
 EZID_SERVER = "https://ezid.cdlib.org"
 TEST_USERNAME = 'apitest'
 TEST_PASSWORD = 'apitest'
-SCHEMES = {'ark': 'ark:/', 'doi': "doi:"}
-STATUS_RESERVED = "reserved"
-STATUS_PUBLIC = "public"
-STATUS_UNAVAILABLE = "unavailable"
-TEST_SHOULDER = {SCHEMES['ark'] : '99999/fk4', SCHEMES['doi'] : '10.5072/FK2'}
-TEST_METADATA = {'_target': 'http://example.org/opensociety', 'erc.who': 'Karl Popper', 'erc.what': 'The Open Society and Its Enemies', 'erc.when' : '1945'}
+SCHEMES = {
+    'ark': 'ark:/',
+    'doi': "doi:"
+}
+
+TEST_SHOULDER = {
+    'ark' : '99999/fk4',
+    'doi' : '10.5072/FK2',
+}
+
+class RECORD_STATUS():
+    RESERVED = "reserved"
+    PUBLIC = "public"
+    UNAVAILABLE = "unavailable"
+
 
 
 class ApiSession ():
@@ -22,12 +31,14 @@ class ApiSession ():
     Also accepts a scheme (either "ark" or "doi"), and a assigning authority number.
     Defaults to test account on with scheme and prefix: ark:/99999/fk4
     '''
+
+    @classmethod
+    def TestSession(cls, scheme='ark'):
+        test_naa = TEST_SHOULDER[scheme]
+        return cls(TEST_USERNAME, TEST_PASSWORD, scheme, naa=test_naa)
+
+
     def __init__(self, username=TEST_USERNAME, password=TEST_PASSWORD, scheme="ark", naa=''):
-        if username == TEST_USERNAME:
-            password = TEST_PASSWORD
-            self.test = True
-        else:
-            self.test = False
         session = requests.Session()
         session.auth = (username, password)
         session.headers.update({"Content-Type": "text/plain; charset=UTF-8"})
@@ -36,10 +47,7 @@ class ApiSession ():
         # TODO: check login before returning?
         # TODO: what happens if no connection?
         self.setScheme(scheme[0:3])
-        # if we are testing, use the test shoulder for the given scheme
-        if self.test == True:
-            naa = TEST_SHOULDER[self.scheme]
-        self.setNAA(naa)
+        self.naa = naa
 
     def __parseOrReturnError(self, r):
         if r.ok:
@@ -63,7 +71,7 @@ class ApiSession ():
         Optionally, metadata can be passed to the 'metadata' prameter as a dictionary object of names & values.
         Minted identifiers are always created with a status of "reserved".
         '''
-        metadata['_status'] = STATUS_RESERVED
+        metadata['_status'] = RECORD_STATUS.RESERVED
         anvlData = self.__makeAnvl(metadata)
         r = self.session.post(self.mint_url, data=anvlData)
         return self.__parseOrReturnError(r)
@@ -73,7 +81,7 @@ class ApiSession ():
         Optionally, metadata can be passed to the 'metadata' prameter as a dictionary object of names & values.
         '''
         if not "_status" in metadata:
-            metadata["_status"] = STATUS_RESERVED
+            metadata["_status"] = RECORD_STATUS.RESERVED
         anvlData = self.__makeAnvl(metadata)
         r = self.session.put(self.id_url(identifier), data=anvlData)
         return self.__parseOrReturnError(r)
@@ -131,10 +139,10 @@ class ApiSession ():
         return self.get(identifier)['metadata']['_status']
 
     def makePublic(self, identifier):
-        return self.modify(identifier, '_status', STATUS_PUBLIC)
+        return self.modify(identifier, '_status', RECORD_STATUS.PUBLIC)
 
     def makeUnavailable(self, identifier):
-        return self.modify(identifier, '_status', STATUS_UNAVAILABLE)
+        return self.modify(identifier, '_status', RECORD_STATUS.UNAVAILABLE)
 
     def getTarget(self, identifier):
         return self.get(identifier)['metadata']['_target']
@@ -190,8 +198,6 @@ class ApiSession ():
         """ Accepts a dictionary object containing name value pairs 
             Returns an escaped ANVL string for submission to EZID.
         """
-        if metadata == None and self.test == True:
-            metadata = TEST_METADATA
         #----THIS BLOCK TAKEN WHOLESALE FROM EZID API DOCUMENTATION----#
         # http://n2t.net/ezid/doc/apidoc.html#request-response-bodies
         def escape (s):
