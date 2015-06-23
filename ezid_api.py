@@ -23,8 +23,6 @@ class RECORD_STATUS():
     PUBLIC = "public"
     UNAVAILABLE = "unavailable"
 
-
-
 class ApiSession ():
     ''' The ApiSession optionally accepts an EZID API username and password. 
 
@@ -38,7 +36,7 @@ class ApiSession ():
         return cls(TEST_USERNAME, TEST_PASSWORD, scheme, naa=test_naa)
 
 
-    def __init__(self, username=TEST_USERNAME, password=TEST_PASSWORD, scheme="ark", naa=''):
+    def __init__(self, username, password, scheme, naa=''):
         session = requests.Session()
         session.auth = (username, password)
         session.headers.update({"Content-Type": "text/plain; charset=UTF-8"})
