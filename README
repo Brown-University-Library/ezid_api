@@ -1,5 +1,5 @@
 ezid.py - 0.3
-https://travis-ci.org/jrhoads/ezid_api.svg
+[![Build Status](https://travis-ci.org/jrhoads/ezid_api.svg?branch=master)](https://travis-ci.org/jrhoads/ezid_api)
 
 API tools for EZID API (http://ezid.cdlib.org). 
 
