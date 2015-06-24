@@ -1,19 +1,9 @@
 language: python
-#before_install:
- #- sudo apt-get install -qq libxml2-dev libxslt-dev
-#env:
-  #- CFLAGS="-O0"
 python:
   - 2.7
-  #- 2.6
-# command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
-#virtualenv:
-#  system_site_packages: true
 install: 
-  #- pip install -r requirements.txt --use-mirrors
-  - pip install coveralls
-# command to run tests, e.g. python setup.py test
+  - pip install requests coveralls
 script:
   - python test.py
-  - coverage run test.py
+  - coverage run --omit="*site-packages*","./test.py" test.py
 after_success: coveralls
